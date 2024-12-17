@@ -1,10 +1,13 @@
+from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from accounts.models import User
-from accounts.serializers import LoginSerializer,ReportingChainSerializer, UserSerializer, UserHierarchySerializer
+from accounts.models import User, Role, Department
+from accounts.serializers import LoginSerializer, ReportingChainSerializer, UserSerializer, UserHierarchySerializer, \
+    RoleSerializer, DepartmentSerializer
 from accounts.services import AccountService, ReportingLineService
 from base.constants import EmployeeRoles, EmployeePositions
+from base.pagination import CustomPagination
 from base.role_permission import role_position_required
 
 
@@ -16,9 +19,24 @@ class LoginAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
+class RoleListAPIView(ListAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    queryset = Role.active_objects.all()
+    serializer_class = RoleSerializer
+    pagination_class = CustomPagination
+
+class DepartmentListAPIView(ListAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    queryset = Department.active_objects.all()
+    serializer_class = DepartmentSerializer
+    pagination_class = CustomPagination
+
+
 class EmployeeListCreateView(APIView):
     serializer_class = UserSerializer
     permission_classes = (permissions.IsAuthenticated,)
+    pagination_class = CustomPagination
 
     @role_position_required(
         allowed_roles=[EmployeeRoles.CEO.value],
@@ -38,8 +56,10 @@ class EmployeeListCreateView(APIView):
     )
     def get(self, request, *args, **kwargs):
         employees = User.active_objects.all()
-        serializer = UserSerializer(employees, many=True)
-        return Response(data=serializer.data, status=status.HTTP_200_OK)
+        paginator = self.pagination_class()
+        paginated_employees = paginator.paginate_queryset(employees, request, view=self)
+        serializer = self.serializer_class(paginated_employees, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 
 class EmployeeDetailAPIView(APIView):

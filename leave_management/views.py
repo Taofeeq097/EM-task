@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from base.constants import EmployeeRoles, EmployeePositions
+from base.pagination import CustomPagination
 from base.role_permission import role_position_required
 from leave_management.models import LeaveType
 from leave_management.serializers import (
@@ -17,6 +18,7 @@ from leave_management.services import LeaveTypeService, LeaveRequestService
 class LeaveTypeCreateListAPIView(APIView):
     serializer_class = LeaveTypeSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = CustomPagination
 
     @role_position_required(
         allowed_roles=[EmployeeRoles.CEO],
@@ -31,8 +33,10 @@ class LeaveTypeCreateListAPIView(APIView):
 
     def get(self, request):
         leave_types = LeaveType.active_objects.all()
-        serializer = LeaveTypeSerializer(leave_types, many=True)
-        return Response(data=serializer.data)
+        paginator = self.pagination_class()
+        paginated_employees = paginator.paginate_queryset(leave_types, request, view=self)
+        serializer = self.serializer_class(paginated_employees, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 
 class LeaveTypeDetailAPIView(APIView):
@@ -66,6 +70,7 @@ class LeaveTypeDetailAPIView(APIView):
 class LeaveRequestCreateAPIView(APIView):
     serializer_class = LeaveRequestSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = CustomPagination
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data, context={'request': request})
@@ -76,8 +81,11 @@ class LeaveRequestCreateAPIView(APIView):
 
     def get(self, request):
         qs = LeaveRequestService().get_leave_requests(request)
-        serializer = LeaveRequestSerializer(qs, many=True)
-        return Response(data=serializer.data)
+        paginator = self.pagination_class()
+        paginated_employees = paginator.paginate_queryset(qs, request, view=self)
+        serializer = self.serializer_class(paginated_employees, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
 
 
 class LeaveRequestApprovalAPIView(APIView):
