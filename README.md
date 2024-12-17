@@ -23,8 +23,7 @@ pip install django
 1. Clone the repository:
 
 ```bash
-git clone <repository_url>
-cd <project_directory>
+git clone https://github.com/Taofeeq097/EM-task.git
 ```
 
 2. Install project dependencies:
